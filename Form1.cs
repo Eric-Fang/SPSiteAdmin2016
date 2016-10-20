@@ -60,13 +60,14 @@ namespace SPSiteAdmin2016
 
         private int GetComboBoxSelectedIndexByValue(ComboBox objComboBox, string strValue)
         {
-            int iIndex = 0;
+            int iIndex = -1;
 
             for (int i = 0; i < objComboBox.Items.Count; i++)
             {
                 if (((KeyValuePair<string, string>)objComboBox.Items[i]).Key.Equals(strValue, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    return i;
+                    iIndex = i;
+                    break;
                 }
             }
 
@@ -322,7 +323,7 @@ namespace SPSiteAdmin2016
             }
             catch (Exception ex)
             {
-                MessageBox.Show(string.Format(@"Exception message: {0}", ex.Message));
+                MessageBox.Show(string.Format(@"Exception message: {0}, ex.StackTrace: {1}", ex.Message, ex.StackTrace));
                 throw;
             }
             finally
@@ -361,6 +362,8 @@ namespace SPSiteAdmin2016
             if (comboBoxManagedPath.Items.Count > 0)
                 comboBoxManagedPath.Items.Clear();
 
+            comboBoxManagedPath.Items.Add(new KeyValuePair<string, string>("", ""));
+
             SPWebApplication objSPWebApp = SPWebService.ContentService.WebApplications[guidWebApp];
             foreach (SPPrefix prefix in objSPWebApp.Prefixes)
             {
@@ -374,7 +377,7 @@ namespace SPSiteAdmin2016
             comboBoxManagedPath.ValueMember = "Key";
         }
 
-        private void PopulateSPSites(Guid guidWebApp, Guid guidContentDB, ListBox listBoxSPSite)
+        private void PopulateSPSites(Guid guidWebApp, Guid guidContentDB, string strManagedPath, ListBox listBoxSPSite)
         {
             if (listBoxSPSite.Items.Count > 0)
                 listBoxSPSite.Items.Clear();
@@ -387,6 +390,13 @@ namespace SPSiteAdmin2016
                 {
                     if (objSPSite.Url.EndsWith(@"Office_Viewing_Service_Cache"))
                         continue;
+
+                    if (string.IsNullOrEmpty(strManagedPath) == false)
+                    {
+                        //string rootSiteCollectionURL = objSPSite.WebApplication.GetResponseUri(SPUrlZone.Default).ToString();
+                        if (objSPSite.Url.Contains(string.Format(@"/{0}/", strManagedPath)) == false)
+                            continue;
+                    }
 
                     listBoxSPSite.Items.Add(new KeyValuePair<string, string>(objSPSite.Url, string.Format("{0}, {1}", objSPSite.RootWeb.Title, objSPSite.Url)));
                 }
@@ -578,6 +588,7 @@ namespace SPSiteAdmin2016
 
             PopulateSPSites(new Guid(strKeyWebApp),
                 new Guid(strKeyContentDB),
+                @"",
                 listBoxInWebAppSPSiteSource);
 
             SPWebApplication objSPWebApp = SPWebService.ContentService.WebApplications[new Guid(strKeyWebApp)];
@@ -596,14 +607,27 @@ namespace SPSiteAdmin2016
         {
             string strKeyWebApp = ((KeyValuePair<string, string>)comboBoxInWebApp.SelectedItem).Key;
             string strKeyContentDB = ((KeyValuePair<string, string>)comboBoxInWebAppContentDBDest.SelectedItem).Key;
+            string strManagedPath = string.Empty;
 
+            if (_dictPSScriptInWebApp.Count > 0)
+            {
+                // RefreshPSScriptTextBoxInWebApp();
+                buttonClearPSScript_Click(null, null);
+                comboBoxInWebAppContentDBSource_SelectedIndexChanged(null, null);
+            }
+
+            if (comboBoxInWebAppManagedPath.SelectedItem != null)
+            {
+                strManagedPath = ((KeyValuePair<string, string>)comboBoxInWebAppManagedPath.SelectedItem).Value;
+            }
             PopulateSPSites(new Guid(strKeyWebApp),
                 new Guid(strKeyContentDB),
+                strManagedPath,
                 listBoxInWebAppSPSiteDest);
 
             SPWebApplication objSPWebApp = SPWebService.ContentService.WebApplications[new Guid(strKeyWebApp)];
             SPContentDatabase objSPContentDatabase = objSPWebApp.ContentDatabases[new Guid(strKeyContentDB)];
-            textBoxInWebAppDestDBSize.Text = (((float)objSPContentDatabase.DiskSizeRequired)/(1024*1024*1024)).ToString("#.00");
+            textBoxInWebAppDestDBSize.Text = (((float)objSPContentDatabase.DiskSizeRequired) / (1024 * 1024 * 1024)).ToString("#.00");
             textBoxInWebAppDestDBSiteCount.Text = objSPContentDatabase.CurrentSiteCount.ToString();
 
             SPSiteAdmin2016.Properties.Settings.Default.InWebAppContentDBDest = strKeyContentDB;
@@ -611,6 +635,11 @@ namespace SPSiteAdmin2016
 
             ResetStatusListBoxSPSite(comboBoxInWebAppContentDBSource, comboBoxInWebAppContentDBDest, listBoxInWebAppSPSiteSource, listBoxInWebAppSPSiteDest);
             SetLabelInWebAppPrompt(string.Empty);
+        }
+
+        private void comboBoxInWebAppManagedPath_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            comboBoxInWebAppContentDBDest_SelectedIndexChanged(sender, e);
         }
 
         private string getWebAppUrlByGUID(string strWebAppGUID)
@@ -772,7 +801,7 @@ namespace SPSiteAdmin2016
 
             strLine = string.Format(_PSTemplate_SPSiteDeletionTimerJob, strWebAppUrl);
             textBoxPSScript.Text += strLine + Environment.NewLine;
-            
+
             //Move-SPSite http://$webAppSource$envSuffix/sites/$siteNameDest -DestinationDatabase $databaseNameSource -Confirm:$false
             strLine = string.Format(_PSTemplate_SPSiteMove, strSiteUrlDest, strContentDatabaseName);
             textBoxPSScript.Text += strLine + Environment.NewLine;
@@ -784,7 +813,7 @@ namespace SPSiteAdmin2016
             strLine = string.Format(_PSTemplate_SPContentDatabaseDismount, _SPContentDatabase_Tmp);
             textBoxPSScript.Text += strLine + Environment.NewLine;
         }
-        
+
         private void RefreshPSScriptTextBoxCrossWebApp()
         {
             //string strSiteUrl = string.Empty;
@@ -1239,29 +1268,36 @@ namespace SPSiteAdmin2016
             }
         }
 
-        private void comboBoxContentDBCreate_SelectedIndexChanged(object sender, EventArgs e)
+        private void PopulateSPSitesCreate()
         {
             string strKeyWebApp = ((KeyValuePair<string, string>)comboBoxWebAppCreate.SelectedItem).Key;
             string strKeyContentDB = ((KeyValuePair<string, string>)comboBoxContentDBCreate.SelectedItem).Key;
+            string strManagedPath = string.Empty;
 
+            if (comboBoxCreateManagedPath.SelectedItem != null)
+            {
+                strManagedPath = ((KeyValuePair<string, string>)comboBoxCreateManagedPath.SelectedItem).Value;
+            }
             PopulateSPSites(new Guid(strKeyWebApp),
                 new Guid(strKeyContentDB),
+                strManagedPath,
                 listBoxSPSiteCreate);
+        }
 
-            SPSiteAdmin2016.Properties.Settings.Default.ContentDBCreate = strKeyContentDB;
-            SPSiteAdmin2016.Properties.Settings.Default.Save();
+        private void comboBoxContentDBCreate_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            PopulateSPSitesCreate();
+
+            //string strKeyContentDB = ((KeyValuePair<string, string>)comboBoxContentDBCreate.SelectedItem).Key;
+            //SPSiteAdmin2016.Properties.Settings.Default.ContentDBCreate = strKeyContentDB;
+            //SPSiteAdmin2016.Properties.Settings.Default.Save();
 
             RefreshPSScriptTextBoxCreate();
         }
 
         private void buttonCreateRefresh_Click(object sender, EventArgs e)
         {
-            string strKeyWebApp = ((KeyValuePair<string, string>)comboBoxWebAppCreate.SelectedItem).Key;
-            string strKeyContentDB = ((KeyValuePair<string, string>)comboBoxContentDBCreate.SelectedItem).Key;
-
-            PopulateSPSites(new Guid(strKeyWebApp),
-                new Guid(strKeyContentDB),
-                listBoxSPSiteCreate);
+            comboBoxContentDBCreate_SelectedIndexChanged(sender, e);
         }
 
         private void RefreshPSScriptTextBoxCreate()
@@ -1322,8 +1358,13 @@ namespace SPSiteAdmin2016
         private void buttonClearPSScript_Click(object sender, EventArgs e)
         {
             textBoxPSScript.Text = string.Empty;
-        }
 
+            if (_dictPSScriptInWebApp.Count > 0) _dictPSScriptInWebApp.Clear();
+            if (_dictPSScriptBackup.Count > 0) _dictPSScriptBackup.Clear();
+            if (_dictPSScriptRestore.Count > 0) _dictPSScriptRestore.Clear();
+            if (_dictPSScriptCreate.Count > 0) _dictPSScriptCreate.Clear();
+            if (_dictPSScriptCrossWebApp.Count > 0) _dictPSScriptCrossWebApp.Clear();
+        }
         private void checkBoxTimestampBackup_CheckedChanged(object sender, EventArgs e)
         {
             SPSiteAdmin2016.Properties.Settings.Default.TimestampBackup = checkBoxTimestampBackup.Checked;
@@ -1382,11 +1423,19 @@ namespace SPSiteAdmin2016
             if (comboBoxCrossWebAppContentDBDest.SelectedItem == null)
                 return;
 
+            RefreshPSScriptTextBoxCrossWebApp();
+
             string strKeyCrossWebAppDest = ((KeyValuePair<string, string>)comboBoxCrossWebAppDest.SelectedItem).Key;
             string strKeyCrossWebAppContentDBDest = ((KeyValuePair<string, string>)comboBoxCrossWebAppContentDBDest.SelectedItem).Key;
+            string strManagedPath = string.Empty;
 
+            if (comboBoxCreateManagedPath.SelectedItem != null)
+            {
+                strManagedPath = ((KeyValuePair<string, string>)comboBoxCrossWebAppManagedPath.SelectedItem).Value;
+            }
             PopulateSPSites(new Guid(strKeyCrossWebAppDest),
                 new Guid(strKeyCrossWebAppContentDBDest),
+                strManagedPath,
                 listBoxCrossWebAppSPSiteDest);
 
             SPSiteAdmin2016.Properties.Settings.Default.CrossWebAppContentDBDest = strKeyCrossWebAppContentDBDest;
@@ -1394,6 +1443,11 @@ namespace SPSiteAdmin2016
 
             ResetStatusListBoxSPSite(comboBoxCrossWebAppContentDBSource, comboBoxCrossWebAppContentDBDest, listBoxCrossWebAppSPSiteSource, listBoxCrossWebAppSPSiteDest);
             SetLabelCrossWebAppPrompt();
+        }
+
+        private void comboBoxCrossWebAppManagedPath_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            comboBoxCrossWebAppContentDBDest_SelectedIndexChanged(sender, e);
         }
 
         private void comboBoxCrossWebAppContentDBSource_SelectedIndexChanged(object sender, EventArgs e)
@@ -1405,9 +1459,15 @@ namespace SPSiteAdmin2016
 
             string strKeyCrossWebAppSource = ((KeyValuePair<string, string>)comboBoxCrossWebAppSource.SelectedItem).Key;
             string strKeyCrossWebAppContentDBSource = ((KeyValuePair<string, string>)comboBoxCrossWebAppContentDBSource.SelectedItem).Key;
+            string strManagedPath = string.Empty;
 
+            if (comboBoxCreateManagedPath.SelectedItem != null)
+            {
+                strManagedPath = ((KeyValuePair<string, string>)comboBoxCrossWebAppManagedPath.SelectedItem).Value;
+            }
             PopulateSPSites(new Guid(strKeyCrossWebAppSource),
                 new Guid(strKeyCrossWebAppContentDBSource),
+                strManagedPath,
                 listBoxCrossWebAppSPSiteSource);
 
             SPSiteAdmin2016.Properties.Settings.Default.CrossWebAppContentDBSource = strKeyCrossWebAppContentDBSource;

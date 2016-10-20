@@ -1,0 +1,9 @@
+E:\EricFang\VS2015\SPSiteAdmin2016\bin\Debug\SPSiteAdmin2016.exe.config
+E:\EricFang\VS2015\SPSiteAdmin2016\bin\Debug\SPSiteAdmin2016.exe
+E:\EricFang\VS2015\SPSiteAdmin2016\bin\Debug\SPSiteAdmin2016.pdb
+E:\EricFang\VS2015\SPSiteAdmin2016\obj\Debug\SPSiteAdmin2016.csprojResolveAssemblyReference.cache
+E:\EricFang\VS2015\SPSiteAdmin2016\obj\Debug\SPSiteAdmin2016.Form1.resources
+E:\EricFang\VS2015\SPSiteAdmin2016\obj\Debug\SPSiteAdmin2016.Properties.Resources.resources
+E:\EricFang\VS2015\SPSiteAdmin2016\obj\Debug\SPSiteAdmin2016.csproj.GenerateResource.Cache
+E:\EricFang\VS2015\SPSiteAdmin2016\obj\Debug\SPSiteAdmin2016.exe
+E:\EricFang\VS2015\SPSiteAdmin2016\obj\Debug\SPSiteAdmin2016.pdb
