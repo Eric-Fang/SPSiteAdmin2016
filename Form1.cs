@@ -1441,7 +1441,7 @@ namespace SPSiteAdmin2016
             string strKeyCrossWebAppContentDBDest = ((KeyValuePair<string, string>)comboBoxCrossWebAppContentDBDest.SelectedItem).Key;
             string strManagedPath = string.Empty;
 
-            if (comboBoxCreateManagedPath.SelectedItem != null)
+            if (comboBoxCrossWebAppManagedPath.SelectedItem != null)
             {
                 strManagedPath = ((KeyValuePair<string, string>)comboBoxCrossWebAppManagedPath.SelectedItem).Value;
             }
