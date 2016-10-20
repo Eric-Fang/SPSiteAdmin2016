@@ -821,7 +821,12 @@ namespace SPSiteAdmin2016
             string strLine = string.Empty;
             textBoxPSScript.Text = string.Empty;
 
-            string strManagedPathDest = ((KeyValuePair<string, string>)comboBoxCrossWebAppManagedPath.SelectedItem).Key;
+            string strManagedPathDest = string.Empty;
+            if (comboBoxCrossWebAppManagedPath.SelectedItem != null)
+            {
+                strManagedPathDest = ((KeyValuePair<string, string>)comboBoxCrossWebAppManagedPath.SelectedItem).Key;
+            }
+            
             string strContentDB = ((KeyValuePair<string, string>)comboBoxCrossWebAppContentDBDest.SelectedItem).Value;
 
             string strSourceWebAppGUID = ((KeyValuePair<string, string>)comboBoxCrossWebAppSource.SelectedItem).Key;
@@ -1423,7 +1428,14 @@ namespace SPSiteAdmin2016
             if (comboBoxCrossWebAppContentDBDest.SelectedItem == null)
                 return;
 
-            RefreshPSScriptTextBoxCrossWebApp();
+            if (_dictPSScriptCrossWebApp.Count > 0)
+            {
+                // RefreshPSScriptTextBoxInWebApp();
+                buttonClearPSScript_Click(null, null);
+                comboBoxCrossWebAppContentDBSource_SelectedIndexChanged(null, null);
+            }
+
+            // RefreshPSScriptTextBoxCrossWebApp();
 
             string strKeyCrossWebAppDest = ((KeyValuePair<string, string>)comboBoxCrossWebAppDest.SelectedItem).Key;
             string strKeyCrossWebAppContentDBDest = ((KeyValuePair<string, string>)comboBoxCrossWebAppContentDBDest.SelectedItem).Key;
